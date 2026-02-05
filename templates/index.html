@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📜 Certificate Generator</h1>
+            <p class="subtitle">Upload your template and data to generate certificates</p>
+        </header>
+
+        <div class="content">
+            <!-- Instructions Card -->
+            <div class="card instructions">
+                <h2>📋 Instructions</h2>
+                <ol>
+                    <li><strong>PPTX Template:</strong> Upload a PowerPoint file with <code>&lt;&lt;Name&gt;&gt;</code> placeholder</li>
+                    <li><strong>CSV File:</strong> Upload a CSV file with columns: <code>Id</code> and <code>Name</code></li>
+                    <li>Click <strong>Generate Certificates</strong> to create PDFs</li>
+                    <li>Download the merged PDF file containing all certificates</li>
+                </ol>
+            </div>
+
+            <!-- Upload Form Card -->
+            <div class="card upload-form">
+                <h2>📤 Upload Files</h2>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="template">
+                            <span class="label-text">Certificate Template (PPTX)</span>
+                            <span class="required">*</span>
+                        </label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="template" name="template" accept=".pptx" required>
+                            <span class="file-name" id="templateName">No file chosen</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="csv_file">
+                            <span class="label-text">Student Data (CSV)</span>
+                            <span class="required">*</span>
+                        </label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+                            <span class="file-name" id="csvName">No file chosen</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="generateBtn">
+                        <span class="btn-text">Generate Certificates</span>
+                        <span class="loader" style="display: none;"></span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Status Messages -->
+            <div id="statusMessage" class="status-message" style="display: none;"></div>
+
+            <!-- Download Card -->
+            <div id="downloadCard" class="card download-card" style="display: none;">
+                <h2>✅ Certificates Ready!</h2>
+                <p id="successMessage"></p>
+                <a id="downloadBtn" href="#" class="btn-download" download>
+                    📥 Download Merged PDF
+                </a>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with Flask & Python-PPTX</p>
+        </footer>
+    </div>
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const generateBtn = document.getElementById('generateBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const downloadCard = document.getElementById('downloadCard');
+        const templateInput = document.getElementById('template');
+        const csvInput = document.getElementById('csv_file');
+        const templateName = document.getElementById('templateName');
+        const csvName = document.getElementById('csvName');
+
+        // Update file name display
+        templateInput.addEventListener('change', function() {
+            templateName.textContent = this.files[0] ? this.files[0].name : 'No file chosen';
+        });
+
+        csvInput.addEventListener('change', function() {
+            csvName.textContent = this.files[0] ? this.files[0].name : 'No file chosen';
+        });
+
+        // Handle form submission
+        uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Reset UI
+            statusMessage.style.display = 'none';
+            downloadCard.style.display = 'none';
+
+            // Show loading state
+            const btnText = generateBtn.querySelector('.btn-text');
+            const loader = generateBtn.querySelector('.loader');
+            btnText.textContent = 'Generating...';
+            loader.style.display = 'inline-block';
+            generateBtn.disabled = true;
+
+            // Create form data
+            const formData = new FormData();
+            formData.append('template', templateInput.files[0]);
+            formData.append('csv_file', csvInput.files[0]);
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Show success message
+                    showMessage('success', data.message);
+                    
+                    // Show download card
+                    document.getElementById('successMessage').textContent = data.message;
+                    document.getElementById('downloadBtn').href = data.download_url;
+                    downloadCard.style.display = 'block';
+                    
+                    // Scroll to download section
+                    downloadCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    showMessage('error', data.error || 'An error occurred');
+                }
+            } catch (error) {
+                showMessage('error', 'Network error: ' + error.message);
+            } finally {
+                // Reset button
+                btnText.textContent = 'Generate Certificates';
+                loader.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        });
+
+        function showMessage(type, message) {
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.textContent = message;
+            statusMessage.style.display = 'block';
+            statusMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
+</body>
+</html>
